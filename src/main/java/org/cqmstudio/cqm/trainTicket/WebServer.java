@@ -38,6 +38,7 @@ public class WebServer {
         server.createContext("/station/add", this::handleStationAdd);
         server.createContext("/station/edit", this::handleStationEdit);
         server.createContext("/station/delete", this::handleStationDelete);
+        server.createContext("/lines/add", this::handleAddLine);
         server.setExecutor(Executors.newCachedThreadPool());
         server.start();
         plugin.getLogger().info("Web panel started on port " + port);
@@ -60,6 +61,7 @@ public class WebServer {
             sb.append("</style><title>车站线路管理</title></head><body>");
             sb.append("<div class=\"header\"><h2>车站线路管理面板</h2><div><a href=\"/tickets\">车票管理</a> &nbsp; <a href=\"/\">线路管理</a></div></div>");
             sb.append("<div class=\"box\"><form method=\"post\" action=\"/sync\"><button type=\"submit\">手动同步云端数据</button></form></div><br/>");
+            sb.append("<div class=\"box\"><h3>添加线路</h3><form method=\"post\" action=\"/lines/add\">名称: <input name=\"name\" /> 可选ID: <input name=\"id\" /> <input type=\"submit\" value=\"添加\"/></form></div><br/>");
             sb.append("<div class=\"box\"><h3>线路列表 / 价格</h3>");
             sb.append("<table><tr><th>线路ID</th><th>线路名</th><th>价格</th><th>操作</th></tr>");
 
@@ -118,7 +120,8 @@ public class WebServer {
             sendPlain(ex, 500, "设置失败: " + e.getMessage());
         }
     }
-
+
+
     private void handleDeleteRoute(HttpExchange ex) throws IOException {
         if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) { sendPlain(ex,405,"Method Not Allowed"); return; }
         String body = readRequestBody(ex.getRequestBody());
@@ -282,6 +285,30 @@ public class WebServer {
             new SyncTask(plugin, plugin.getDbManager()).run();
         });
         sendPlain(ex, 200, "已触发同步任务，稍后生效。<a href=\"/\">返回</a>");
+    }
+
+    private void handleAddLine(HttpExchange ex) throws IOException {
+        if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) { sendPlain(ex,405,"Method Not Allowed"); return; }
+        String body = readRequestBody(ex.getRequestBody()); Map<String,String> p = parseQuery(body);
+        String name = p.get("name"); String idS = p.get("id"); if (name==null) { sendPlain(ex,400,"缺少名称"); return; }
+        try {
+            Integer idOpt = (idS==null||idS.isEmpty())?null:Integer.parseInt(idS);
+            int nid = plugin.getDbManager().insertLine(name, idOpt);
+            sendPlain(ex,200,"已添加线路，<a href=\"/line?lineId="+nid+"\">管理新线路</a>");
+        } catch (Exception e) { sendPlain(ex,500,"添加失败: "+e.getMessage()); }
+    }
+
+    private void handleReorderLines(HttpExchange ex) throws IOException {
+        if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) { sendPlain(ex,405,"Method Not Allowed"); return; }
+        String body = readRequestBody(ex.getRequestBody()); Map<String,String> p = parseQuery(body);
+        String order = p.get("order"); if (order==null) { sendPlain(ex,400,"缺少order"); return; }
+        try {
+            String[] parts = order.split(",");
+            for (int i=0;i<parts.length;i++) {
+                String s = parts[i].trim(); if (s.isEmpty()) continue; plugin.getDbManager().setLinePosition(Integer.parseInt(s), i);
+            }
+            sendPlain(ex,200,"已保存排序，<a href=\"/\">返回</a>");
+        } catch (Exception e) { sendPlain(ex,500,"保存失败: "+e.getMessage()); }
     }
 
     private void sendPlain(HttpExchange ex, int code, String msg) throws IOException {

@@ -155,10 +155,34 @@ import java.util.List;
     }
     public synchronized List<String> listLines() throws SQLException {
         List<String> out = new ArrayList<>();
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT id,name FROM lines")) {
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT id,name FROM lines ORDER BY id")) {
             while (rs.next()) out.add(rs.getInt(1) + ": " + rs.getString(2));
         }
         return out;
+    }
+
+    public synchronized int insertLine(String name, Integer idOpt) throws SQLException {
+        if (idOpt != null && idOpt > 0) {
+            try (PreparedStatement ps = conn.prepareStatement("INSERT OR REPLACE INTO lines(id,name,raw_json) VALUES(?,?,?)")) {
+                ps.setInt(1, idOpt);
+                ps.setString(2, name);
+                ps.setString(3, "{}");
+                ps.executeUpdate();
+            }
+            return idOpt;
+        } else {
+            try (PreparedStatement ps = conn.prepareStatement("INSERT INTO lines(name,raw_json) VALUES(?,?)")) {
+                ps.setString(1, name);
+                ps.setString(2, "{}");
+                ps.executeUpdate();
+            }
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) { if (rs.next()) return rs.getInt(1); }
+            return -1;
+        }
+    }
+
+    public synchronized void setLinePosition(int lineId, int position) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE lines SET position=? WHERE id=?")) { ps.setInt(1, position); ps.setInt(2, lineId); ps.executeUpdate(); }
     }
     // tickets management
     public static class TicketRecord {
