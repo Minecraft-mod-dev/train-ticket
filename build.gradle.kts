@@ -4,6 +4,9 @@ plugins {
     id("xyz.jpenilla.run-paper") version "3.0.2"
 }
 
+val mcVersion: String by project
+val vaultVersion: String by project
+
 repositories {
     mavenCentral()
 
@@ -14,10 +17,10 @@ repositories {
 
 dependencies {
     // Paper API
-    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:${mcVersion}-R0.1-SNAPSHOT")
 
     // Vault API
-    compileOnly("com.github.MilkBowl:VaultAPI:1.7")
+    compileOnly("com.github.MilkBowl:VaultAPI:${vaultVersion}")
 
     // bStats
     implementation("org.bstats:bstats-bukkit:3.0.2")
@@ -38,7 +41,7 @@ java {
 tasks {
 
     runServer {
-        minecraftVersion("1.21.1")
+        minecraftVersion(mcVersion)
 
         jvmArgs(
             "-Xms2G",
