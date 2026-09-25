@@ -28,7 +28,12 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:${mcVersion}-R0.1-SNAPSHOT")
 
     // Vault API
-    compileOnly("com.github.MilkBowl:VaultAPI:${vaultVersion}")
+    compileOnly("com.github.MilkBowl:VaultAPI:${vaultVersion}") {
+        // Prevent Vault's POM from pulling an old org.bukkit:bukkit artifact that conflicts with Paper
+        exclude(group = "org.bukkit", module = "bukkit")
+        // ensure no transitive resolution
+        isTransitive = false
+    }
 
     // bStats
     implementation("org.bstats:bstats-bukkit:3.0.2")
