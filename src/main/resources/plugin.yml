@@ -1,0 +1,21 @@
+name: train-ticket
+version: '${version}'
+
+main: org.cqmstudio.cqm.trainTicket.TrainTicket
+api-version: '1.21.1'
+load: STARTUP
+
+softdepend: [Vault]
+
+commands:
+  setline:
+    description: 设置或查看线路价格
+  givemachine:
+    description: 给玩家发放带NBT的售票/检票/设置器
+    usage: /givemachine <dispenser|gate|setter> [player]
+  syncdata:
+    description: 手动同步云端站点和线路数据
+    usage: /syncdata
+
+authors: [ cqm ]
+website: cqiming.com
