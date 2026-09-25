@@ -1,0 +1,96 @@
+name: Build Minecraft Plugin (Gradle)
+
+on:
+  push:
+    branches: [ "1.21.4" ]
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 关键：赋予 gradlew 执行权限，防止 Permission denied
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build with Gradle
+        run: ./gradlew clean build
+
+      # 关键步骤：提取版本号并判断是否为预发布
+      - name: Get Version and Check Pre-release
+        id: version_step
+        run: |
+          # 1. 检查文件是否存在
+          if [ ! -f gradle.properties ]; then
+            echo "::error::gradle.properties not found in root directory"
+            exit 1
+          fi
+
+          # 2. 提取版本号 (去除空格和换行符)
+          # 注意：确保 gradle.properties 中是 version=1.0.0 格式
+          VERSION=$(grep '^version=' gradle.properties | head -n 1 | cut -d'=' -f2 | tr -d '[:space:]')
+
+          # 尝试读取 minecraftVersion
+          MC_VERSION=$(grep '^minecraftVersion=' gradle.properties | head -n 1 | cut -d'=' -f2 | tr -d '[:space:]' || true)
+
+          # 3. 严格检查版本是否为空
+          if [ -z "$VERSION" ]; then
+            echo "::error::Failed to extract version from gradle.properties. Version is empty."
+            exit 1
+          fi
+
+          # 如果没有显式的 minecraftVersion，从 VERSION 中提取数字序列作为回退
+          if [ -z "$MC_VERSION" ]; then
+            MC_VERSION=$(echo "$VERSION" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1 || true)
+            if [ -z "$MC_VERSION" ]; then
+              MC_VERSION="unknown"
+            fi
+          fi
+
+          RELEASE_VERSION="${VERSION}-mc${MC_VERSION}"
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "MINECRAFT_VERSION=$MC_VERSION" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+          echo "Extracted Version: $VERSION (mc $MC_VERSION) -> $RELEASE_VERSION"
+          
+          # 4. 判断是否包含预发布标识 (不区分大小写)
+          if echo "$VERSION" | grep -iqE "(snapshot|alpha|beta|rc|dev|pre)"; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+            echo "RELEASE_TYPE=Pre-release" >> $GITHUB_ENV
+            echo "Detected pre-release version: $VERSION"
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
+            echo "RELEASE_TYPE=Stable Release" >> $GITHUB_ENV
+            echo "Detected stable release version: $VERSION"
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.RELEASE_VERSION }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
+          body: |
+            Auto release for v${{ env.RELEASE_VERSION }}
+
+            **Type:** ${{ env.RELEASE_TYPE }}
+
+            **Commit Message:**
+            ${{ github.event.head_commit.message }}
+          files: build/libs/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
