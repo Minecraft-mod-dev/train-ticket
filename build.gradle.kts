@@ -17,6 +17,8 @@ repositories {
     mavenCentral()
 
     maven("https://repo.papermc.io/repository/maven-public/")
+    // Paper snapshots repository (needed for unreleased MC minor versions)
+    maven("https://repo.papermc.io/repository/maven-snapshots/")
     maven("https://repo.codemc.io/repository/maven-public/")
     maven("https://jitpack.io")
 }
