@@ -1,0 +1,34 @@
+
+name: Build Minecraft Plugin (Gradle)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      # 使用官方 Gradle Action，它会自动设置 JDK（如果项目指定了 toolchain）或默认 JDK
+      # 并配置高效的缓存策略
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          # 如果你的项目需要特定 JDK 版本，可以在这里指定，或者在 build.gradle 中配置 toolchain
+          # java-version: 21 
+          # 默认情况下，setup-gradle 会尝试使用 Wrapper 指定的 Java 版本
+          # 如果 Wrapper 没指定，可能需要显式安装 JDK
+          
+      # 如果 gradle/wrapper/gradle-wrapper.properties 中没有指定 distributionUrl 对应的 JDK 版本
+      # 或者你需要强制使用 JDK 21，建议保留 setup-java 以确保环境一致
+      - name: Set up JDK 21 (Optional but recommended for consistency)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
