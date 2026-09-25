@@ -72,10 +72,12 @@ jobs:
           if echo "$VERSION" | grep -iqE "(snapshot|alpha|beta|rc|dev|pre)"; then
             echo "IS_PRERELEASE=true" >> $GITHUB_ENV
             echo "RELEASE_TYPE=Pre-release" >> $GITHUB_ENV
+            echo "MODRINTH_VERSION_TYPE=beta" >> $GITHUB_ENV
             echo "Detected pre-release version: $VERSION"
           else
             echo "IS_PRERELEASE=false" >> $GITHUB_ENV
             echo "RELEASE_TYPE=Stable Release" >> $GITHUB_ENV
+            echo "MODRINTH_VERSION_TYPE=release" >> $GITHUB_ENV
             echo "Detected stable release version: $VERSION"
           fi
 
@@ -98,12 +100,12 @@ jobs:
       - name: Publish to Modrinth
         uses: Kir-Antipov/mc-publish@v3
         with:
-          token: ${{ secrets.MODRINTH_TOKEN }}
-          project_id: "H8DKfMWO"
-          file: build/libs/*.jar
-          version_number: ${{ env.RELEASE_VERSION }}
-          loaders: paper
-          game_versions: |
-            ${{ env.MINECRAFT_VERSION }}
+          modrinth-id: "H8DKfMWO"
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: build/libs/*.jar
+          modrinth-version: ${{ env.RELEASE_VERSION }}
+          modrinth-loaders: paper
+          modrinth-game-versions: ${{ env.MINECRAFT_VERSION }}
+          modrinth-version-type: ${{ env.MODRINTH_VERSION_TYPE }}
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
