@@ -4,8 +4,8 @@ plugins {
     id("xyz.jpenilla.run-paper") version "3.0.2"
 }
 
-val mcVersion: String by project
-val vaultVersion: String by project
+val mcVersion: String = project.findProperty("minecraftVersion")?.toString() ?: "1.21.1"
+val vaultVersion: String = project.findProperty("vaultVersion")?.toString() ?: "1.7"
 
 repositories {
     mavenCentral()
