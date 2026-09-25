@@ -69,14 +69,13 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ env.VERSION }}
-          # 这里必须确保 env.IS_PRERELEASE 是 'true' 或 'false' 字符串，action 会自动转换
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           body: |
             Auto release for v${{ env.VERSION }}
-            
-            &zwnj;**Type:**&zwnj; ${{ env.IS_PRERELEASE == 'true' && 'Pre-release' || 'Stable Release' }}
-            
-            &zwnj;**Commit Message:**&zwnj;
+
+            **Type:** ${{ env.IS_PRERELEASE == 'true' ? 'Pre-release' : 'Stable Release' }}
+
+            **Commit Message:**
             ${{ github.event.head_commit.message }}
           files: build/libs/*.jar
         env:
