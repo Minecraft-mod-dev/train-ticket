@@ -32,3 +32,69 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+
+      - name: Build with Gradle
+        run: ./gradlew clean build
+        env:
+          # 可选：如果需要发布到 Maven 仓库或其他需要认证的操作
+          # MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          # MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+
+      # 关键步骤：从 gradle.properties 提取版本号并判断是否为预发布
+      - name: Get Version and Check Pre-release
+        id: version_step
+        run: |
+          # 1. 从 gradle.properties 提取版本号
+          # 假设文件中有一行 version=1.0.0-SNAPSHOT
+          if [ ! -f gradle.properties ]; then
+            echo "Error: gradle.properties not found!"
+            exit 1
+          fi
+          
+          # 提取 version 属性的值，去除前后空格
+          VERSION=$(grep '^version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not find version in gradle.properties"
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted Version: $VERSION"
+          
+          # 2. 判断是否包含预发布标识 (不区分大小写)
+          # 常见标识: SNAPSHOT, alpha, beta, rc, dev, pre
+          if echo "$VERSION" | grep -iqE "(snapshot|alpha|beta|rc|dev|pre)"; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+            echo "Detected pre-release version: $VERSION"
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
+            echo "Detected stable release version: $VERSION"
+          fi
+
+      # 清理不需要的文件 (Gradle 通常输出在 build/libs)
+      # 如果使用了 shadow jar，可能会有不带 classifier 的原始 jar，视具体 build.gradle 配置而定
+      - name: Prepare Artifacts
+        run: |
+          # 列出 build/libs 下的文件以便调试
+          ls -l build/libs/ || echo "No build/libs directory found"
+          
+          # 如果存在 original jar (例如使用 shadowJar 时产生的)，可以在此清理
+          # rm -f build/libs/*-original.jar 
+          # 注意：Gradle 默认行为与 Maven 不同，通常只生成一个最终 jar，除非配置了多产物
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.VERSION }}
+          prerelease: ${{ env.IS_PRERELEASE }}
+          body: |
+            Auto release for v${{ env.VERSION }}
+            
+            **Type:** ${{ env.IS_PRERELEASE == 'true' && 'Pre-release' || 'Stable Release' }}
+            
+            **Commit Message:**
+            ${{ github.event.head_commit.message }}
+          files: build/libs/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
