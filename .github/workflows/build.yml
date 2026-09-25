@@ -2,7 +2,7 @@ name: Build Minecraft Plugin (Gradle)
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "1.21.3" ]
 
 jobs:
   build-and-release:
@@ -44,14 +44,29 @@ jobs:
           # 注意：确保 gradle.properties 中是 version=1.0.0 格式
           VERSION=$(grep '^version=' gradle.properties | head -n 1 | cut -d'=' -f2 | tr -d '[:space:]')
 
+          # 尝试读取 minecraftVersion
+          MC_VERSION=$(grep '^minecraftVersion=' gradle.properties | head -n 1 | cut -d'=' -f2 | tr -d '[:space:]' || true)
+
           # 3. 严格检查版本是否为空
           if [ -z "$VERSION" ]; then
             echo "::error::Failed to extract version from gradle.properties. Version is empty."
             exit 1
           fi
 
+          # 如果没有显式的 minecraftVersion，从 VERSION 中提取数字序列作为回退
+          if [ -z "$MC_VERSION" ]; then
+            MC_VERSION=$(echo "$VERSION" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1 || true)
+            if [ -z "$MC_VERSION" ]; then
+              MC_VERSION="unknown"
+            fi
+          fi
+
+          RELEASE_VERSION="${VERSION}-mc${MC_VERSION}"
+
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Extracted Version: $VERSION"
+          echo "MINECRAFT_VERSION=$MC_VERSION" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+          echo "Extracted Version: $VERSION (mc $MC_VERSION) -> $RELEASE_VERSION"
           
           # 4. 判断是否包含预发布标识 (不区分大小写)
           if echo "$VERSION" | grep -iqE "(snapshot|alpha|beta|rc|dev|pre)"; then
@@ -67,10 +82,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ env.VERSION }}
+          tag_name: v${{ env.RELEASE_VERSION }}
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           body: |
-            Auto release for v${{ env.VERSION }}
+            Auto release for v${{ env.RELEASE_VERSION }}
 
             **Type:** ${{ env.RELEASE_TYPE }}
 
