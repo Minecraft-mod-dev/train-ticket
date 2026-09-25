@@ -7,6 +7,12 @@ plugins {
 val mcVersion: String = project.findProperty("minecraftVersion")?.toString() ?: "1.21.1"
 val vaultVersion: String = project.findProperty("vaultVersion")?.toString() ?: "1.7"
 
+// Append Minecraft version to project.version for releases (idempotent)
+val rawVersion = project.version.toString()
+if (!rawVersion.contains("-mc")) {
+    project.version = "$rawVersion-mc$mcVersion"
+}
+
 repositories {
     mavenCentral()
 
