@@ -2,7 +2,7 @@ name: Build Minecraft Plugin (Gradle)
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "1.21.1" ]
 
 jobs:
   build-and-release:
