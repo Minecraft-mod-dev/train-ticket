@@ -25,7 +25,8 @@ repositories {
 
 dependencies {
     // Paper API
-    compileOnly("io.papermc.paper:paper-api:${mcVersion}-R0.1-SNAPSHOT")
+    val paperApiVersion = project.findProperty("paperApiVersion")?.toString() ?: "${mcVersion}-R0.1-SNAPSHOT"
+    compileOnly("io.papermc.paper:paper-api:${paperApiVersion}")
 
     // Vault API
     compileOnly("com.github.MilkBowl:VaultAPI:${vaultVersion}")
