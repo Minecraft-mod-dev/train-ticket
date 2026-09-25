@@ -94,3 +94,16 @@ jobs:
           files: build/libs/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.2
+        with:
+          token: ${{ secrets.MODRINTH_TOKEN }}
+          project_id: "H8DKfMWO"
+          file: build/libs/*.jar
+          version_number: ${{ env.RELEASE_VERSION }}
+          loaders: fabric
+          game_versions: |
+            ${{ env.MINECRAFT_VERSION }}
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
