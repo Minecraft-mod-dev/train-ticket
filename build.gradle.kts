@@ -4,7 +4,7 @@ plugins {
     id("xyz.jpenilla.run-paper") version "3.0.2"
 }
 
-val mcVersion: String = project.findProperty("minecraftVersion")?.toString() ?: "1.21.1"
+val mcVersion: String = project.findProperty("minecraftVersion")?.toString() ?: "1.21.2"
 val vaultVersion: String = project.findProperty("vaultVersion")?.toString() ?: "1.7"
 
 // Append Minecraft version to project.version for releases (idempotent)
@@ -25,7 +25,17 @@ repositories {
 
 dependencies {
     // Paper API
-    val paperApiVersion = project.findProperty("paperApiVersion")?.toString() ?: "${mcVersion}-R0.1-SNAPSHOT"
+    // For Minecraft 1.21.x Paper uses numeric build versioning (e.g. 26.2.build.129).
+    // Default uses a build wildcard so Gradle will resolve the latest available 26.2.build.* for 1.21.2.
+    val paperApiVersion: String = project.findProperty("paperApiVersion")?.toString() ?: run {
+        if (mcVersion.startsWith("1.21")) {
+            // picks the latest 26.2.build.* available in the papermc repo
+            "26.2.build.+"
+        } else {
+            // fallback to the older coordinate scheme for other MC versions
+            "${mcVersion}-R0.1-SNAPSHOT"
+        }
+    }
     compileOnly("io.papermc.paper:paper-api:${paperApiVersion}")
 
     // Vault API
@@ -58,7 +68,6 @@ tasks {
         )
     }
 
-
     processResources {
 
         val props = mapOf(
@@ -69,7 +78,6 @@ tasks {
             expand(props)
         }
     }
-
 
     shadowJar {
 
@@ -83,7 +91,6 @@ tasks {
             "META-INF/*.RSA"
         )
     }
-
 
     build {
         dependsOn(shadowJar)
