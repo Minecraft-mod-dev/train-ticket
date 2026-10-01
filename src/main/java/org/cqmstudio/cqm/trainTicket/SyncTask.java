@@ -26,6 +26,7 @@ public class SyncTask extends BukkitRunnable {
         try {
             String stationsUrl = plugin.getConfig().getString("sync.stations_url", "");
             String linesUrl = plugin.getConfig().getString("sync.lines_url", "");
+            String ynlog = plugin.getConfig().getString("sync.log", "");
 
             // stations
             if (stationsUrl != null && !stationsUrl.isBlank()) {
@@ -35,7 +36,7 @@ public class SyncTask extends BukkitRunnable {
                     JSONArray arr = new JSONArray(respS.body());
                     db.upsertStations(arr);
                 }
-            } else {
+            } else if(ynlog == "true"){
                 plugin.getLogger().info("跳过 stations 同步：未配置同步地址");
             }
             // lines
@@ -46,7 +47,7 @@ public class SyncTask extends BukkitRunnable {
                     JSONArray arr = new JSONArray(respL.body());
                     db.upsertLines(arr);
                 }
-            } else {
+            } else if(ynlog == "true"){
                 plugin.getLogger().info("跳过 lines 同步：未配置同步地址");
             }
         } catch (IOException | InterruptedException | SQLException e) {
