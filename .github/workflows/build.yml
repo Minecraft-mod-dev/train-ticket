@@ -107,5 +107,7 @@ jobs:
           modrinth-loaders: paper
           modrinth-game-versions: ${{ env.MINECRAFT_VERSION }}
           modrinth-version-type: ${{ env.MODRINTH_VERSION_TYPE }}
+        dependencies: |
+          vault-2.0-economy-plugins(required)
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
