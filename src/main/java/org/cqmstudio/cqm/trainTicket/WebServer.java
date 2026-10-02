@@ -55,16 +55,22 @@ public class WebServer {
         try {
             StringBuilder sb = new StringBuilder();
             sb.append("<html><head><meta charset=\"utf-8\">\n<style>");
-            sb.append("body{font-family:Arial,Helvetica,sans-serif;background:#f7f7f8;color:#222;margin:20px;}table{border-collapse:collapse;width:100%;background:#fff}th,td{padding:8px;border:1px solid #ddd}th{background:#f0f0f0}button, input[type=submit]{background:#2b8ddb;color:#fff;border:0;padding:6px 10px;border-radius:4px}input[type=text], input[type=number]{padding:6px;border:1px solid #ccc;border-radius:4px}");
-            sb.append(".header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}");
-            sb.append(".box{background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}");
-            sb.append("</style><title>车站线路管理</title></head><body>");
-            sb.append("<div class=\"header\"><h2>车站线路管理面板</h2><div><a href=\"/tickets\">车票管理</a> &nbsp; <a href=\"/\">线路管理</a></div></div>");
-            sb.append("<div class=\"box\"><form method=\"post\" action=\"/sync\"><button type=\"submit\">手动同步云端数据</button></form></div><br/>");
-            sb.append("<div class=\"box\"><h3>添加线路</h3><form method=\"post\" action=\"/lines/add\">名称: <input name=\"name\" /> 可选ID: <input name=\"id\" /> <input type=\"submit\" value=\"添加\"/></form></div><br/>");
-            sb.append("<div class=\"box\"><h3>线路列表 / 价格</h3>");
-            sb.append("<table><tr><th>线路ID</th><th>线路名</th><th>价格</th><th>操作</th></tr>");
+            sb.append("*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;color:#222;margin:0;padding:24px;}header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}h1{font-size:20px;margin:0}");
+            sb.append("nav a{color:#2b8ddb;text-decoration:none;margin-left:12px}nav a:hover{text-decoration:underline}");
+            sb.append(".container{max-width:1100px;margin:0 auto} .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}");
+            sb.append(".card{background:#fff;padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(12,20,40,0.06);}");
+            sb.append("table{border-collapse:collapse;width:100%;background:#fff;border-radius:6px;overflow:hidden}th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}th{background:#fbfbfc;color:#444;font-weight:600}");
+            sb.append("form .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input[type=text], input[type=number], select{padding:8px;border:1px solid #ddd;border-radius:6px;min-width:0}");
+            sb.append("button, input[type=submit]{background:#2b8ddb;color:#fff;border:0;padding:8px 12px;border-radius:6px;cursor:pointer}button.secondary{background:#6c757d}");
+            sb.append(".muted{color:#666;font-size:13px}");
+            sb.append("@media(max-width:900px){.grid{grid-template-columns:1fr;}}");
+            sb.append("</style><title>车站与线路管理</title></head><body>");
 
+            sb.append("<div class=\"container\"><header><h1>TrainTicket 管理面板</h1><nav><a href=\"/\">首页</a><a href=\"/tickets\">车票管理</a></nav></header>");
+            sb.append("<div class=\"grid\">\n<div class=\"card\">\n<h3>线路列表 / 价格</h3>");
+
+            // lines table
+            sb.append("<table><thead><tr><th style=\"width:80px\">线路ID</th><th>线路名</th><th style=\"width:180px\">价格</th><th style=\"width:220px\">操作</th></tr></thead><tbody>");
             List<String> lines = plugin.getDbManager().listLines();
             for (String s : lines) {
                 String[] parts = s.split(":", 2);
@@ -76,23 +82,44 @@ public class WebServer {
                 sb.append("<td>").append(id).append("</td>");
                 sb.append("<td>").append(escapeHtml(name)).append("</td>");
                 sb.append("<td>")
-                        .append("<form method=\"post\" action=\"/setprice\" style=\"display:inline\">")
+                        .append("<form method=\"post\" action=\"/setprice\" style=\"display:flex;gap:8px;align-items:center;\">")
                         .append("<input type=\"hidden\" name=\"lineId\" value=\"").append(id).append("\" />")
                         .append("<input name=\"price\" value=\"").append(price).append("\" />")
-                        .append("<input type=\"submit\" value=\"设置价格\" />")
+                        .append("<input type=\"submit\" value=\"设置\" />")
                         .append("</form>")
                         .append("</td>");
                 sb.append("<td>")
-                        .append("<a href=\"/line?lineId=").append(id).append("\">管理</a> &nbsp;")
-                        .append("<form method=\"post\" action=\"/routes/delete\" style=\"display:inline\">")
+                        .append("<a href=\"/line?lineId=").append(id).append("\">管理</a> &nbsp; ")
+                        .append("<form method=\"post\" action=\"/routes/delete\" style=\"display:inline;margin-left:8px\">")
                         .append("<input type=\"hidden\" name=\"lineId\" value=\"").append(id).append("\" />")
                         .append("<input type=\"submit\" value=\"删除线路\" style=\"background:#d9534f\" />")
                         .append("</form>")
                         .append("</td>");
                 sb.append("</tr>");
             }
+            sb.append("</tbody></table>");
 
-            sb.append("</table></div>");
+            sb.append("<div style=\"margin-top:12px;display:flex;gap:8px;flex-wrap:wrap\"><form method=\"post\" action=\"/lines/add\" style=\"display:flex;gap:8px;align-items:center\">名称:<input name=\"name\" /> 可选ID:<input name=\"id\" style=\"width:80px\" /> <input type=\"submit\" value=\"添加线路\"/></form>");
+            sb.append("<form method=\"post\" action=\"/sync\" style=\"margin-left:auto\"><input type=\"submit\" value=\"手动同步云端数据\"/></form></div>");
+
+            sb.append("</div>\n<div class=\"card\">\n<h3>快速添加站点</h3>");
+            // add station form with select of lines
+            sb.append("<form method=\"post\" action=\"/station/add\"><div class=\"row\"><label class=\"muted\">站点名称：</label><input name=\"name\" required /></div>");
+            sb.append("<div class=\"row\" style=\"margin-top:8px\"><label class=\"muted\">所属线路：</label><select name=\"lineId\" required>");
+            // build options
+            for (String s : lines) {
+                String[] parts = s.split(":",2);
+                String id = parts[0].trim();
+                String name = parts.length>1?parts[1].trim():id;
+                sb.append("<option value=\"").append(id).append("\">" ).append(escapeHtml(name)).append(" (ID:").append(id).append(")</option>");
+            }
+            sb.append("</select></div>");
+            sb.append("<div class=\"row\" style=\"margin-top:8px\">可选ID：<input name=\"id\" style=\"width:120px\" /> <input type=\"submit\" value=\"添加站点\"/></div>");
+            sb.append("<p class=\"muted\">提示：若要兼容旧版本数据库，请不要修改列结构；这里只是通过已有接口插入数据。</p>");
+            sb.append("</form>");
+            sb.append("<hr/>\n<h4>说明</h4>\n<p class=\"muted\">点击“管理”可编辑线路详情与站点；“添加站点”会把新站点加入选择的线路，兼容旧版 DB。</p>");
+            sb.append("</div>\n</div></div>");
+
             sb.append("</body></html>");
 
             byte[] resp = sb.toString().getBytes(StandardCharsets.UTF_8);
@@ -141,19 +168,21 @@ public class WebServer {
             String lineName = plugin.getDbManager().getLineName(lineId);
             java.util.List<java.util.Map.Entry<Integer,String>> stations = plugin.getDbManager().listStationsForLine(lineId);
             StringBuilder sb = new StringBuilder();
-            sb.append("<html><head><meta charset=\"utf-8\"><title>管理线路</title></head><body>");
-            sb.append("<h2>管理线路 - "+escapeHtml(lineName==null?String.valueOf(lineId):lineName)+"</h2>");
-            sb.append("<form method=\"post\" action=\"/line/save\">线路ID: <input name=\"lineId\" value=\""+lineId+"\" readonly/> 名称: <input name=\"name\" value=\""+escapeHtml(lineName==null?"":lineName)+"\" /> <input type=\"submit\" value=\"保存\"/></form>");
-            sb.append("<h3>站点列表</h3><table><tr><th>ID</th><th>名称</th><th>操作</th></tr>");
+            sb.append("<html><head><meta charset=\"utf-8\"><title>管理线路</title>");
+            sb.append("<style>body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;margin:0;padding:18px} .container{max-width:900px;margin:0 auto} .card{background:#fff;padding:14px;border-radius:8px;box-shadow:0 6px 18px rgba(12,20,40,0.04)} table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #eee} th{background:#fbfbfc}");
+            sb.append("input,select{padding:8px;border:1px solid #ddd;border-radius:6px} input[type=submit]{background:#2b8ddb;color:#fff;border:0;padding:8px 12px;border-radius:6px}");
+            sb.append("</style></head><body><div class=\"container\"><div class=\"card\"><h2>管理线路 - "+escapeHtml(lineName==null?String.valueOf(lineId):lineName)+"</h2>");
+            sb.append("<form method=\"post\" action=\"/line/save\">线路ID: <input name=\"lineId\" value=\"").append(lineId).append("\" readonly/> 名称: <input name=\"name\" value=\"").append(escapeHtml(lineName==null?"":lineName)).append("\" /> <input type=\"submit\" value=\"保存\"/></form>");
+            sb.append("<h3>站点列表</h3><table><tr><th style=\"width:90px\">ID</th><th>名称</th><th style=\"width:120px\">操作</th></tr>");
             for (java.util.Map.Entry<Integer,String> e: stations) {
                 sb.append("<tr><td>").append(e.getKey()).append("</td><td>").append(escapeHtml(e.getValue())).append("</td><td>");
                 sb.append("<form method=\"post\" action=\"/station/delete\" style=\"display:inline\"><input type=\"hidden\" name=\"stationId\" value=\"").append(e.getKey()).append("\"/><input type=\"submit\" value=\"删除\"/></form>");
                 sb.append("</td></tr>");
             }
             sb.append("</table>");
-            sb.append("<h3>添加站点</h3><form method=\"post\" action=\"/station/add\">名称: <input name=\"name\" /> <input type=\"hidden\" name=\"lineId\" value=\""+lineId+"\"/> 可选ID: <input name=\"id\" /> <input type=\"submit\" value=\"添加\"/></form>");
-            sb.append("<p><a href=\"/\">返回</a></p>");
-            sb.append("</body></html>");
+            sb.append("<h3 style=\"margin-top:12px\">添加站点</h3><form method=\"post\" action=\"/station/add\">名称: <input name=\"name\" /> <input type=\"hidden\" name=\"lineId\" value=\"").append(lineId).append("\"/> 可选ID: <input name=\"id\" /> <input type=\"submit\" value=\"添加\"/></form>");
+            sb.append("<p style=\"margin-top:12px\"><a href=\"/\">返回</a></p>");
+            sb.append("</div></div></body></html>");
             byte[] resp = sb.toString().getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().set("Content-Type","text/html; charset=utf-8");
             ex.sendResponseHeaders(200, resp.length);
@@ -172,7 +201,7 @@ public class WebServer {
         if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) { sendPlain(ex,405,"Method Not Allowed"); return; }
         String body = readRequestBody(ex.getRequestBody()); Map<String,String> p = parseQuery(body);
         String name = p.get("name"); String lineIdS = p.get("lineId"); String idS = p.get("id"); if (name==null||lineIdS==null) { sendPlain(ex,400,"缺少参数"); return; }
-        try { Integer idOpt = (idS==null||idS.isEmpty())?null:Integer.parseInt(idS); plugin.getDbManager().insertStation(name, Integer.parseInt(lineIdS), idOpt); sendPlain(ex,200,"已添加，<a href=\"/line?lineId="+lineIdS+"\">返回</a>"); } catch (Exception e) { sendPlain(ex,500,"添加失败: "+e.getMessage()); }
+        try { Integer idOpt = (idS==null||idS.isEmpty())?null:Integer.parseInt(idS); plugin.getDbManager().insertStation(name, Integer.parseInt(lineIdS), idOpt); sendPlain(ex,200,"已添加，<a href=\"/line?lineId="+lineIdS+"\">查看</a>"); } catch (Exception e) { sendPlain(ex,500,"添加失败: "+e.getMessage()); }
     }
 
     private void handleStationEdit(HttpExchange ex) throws IOException {
@@ -194,13 +223,12 @@ public class WebServer {
         try {
             StringBuilder sb = new StringBuilder();
             sb.append("<html><head><meta charset=\"utf-8\"><title>车票管理</title>");
-            sb.append("<style>body{font-family:Arial,Helvetica,sans-serif;background:#f7f7f8;margin:20px}table{border-collapse:collapse;width:100%;background:#fff}th,td{padding:8px;border:1px solid #ddd}th{background:#f0f0f0}button, input[type=submit]{background:#2b8ddb;color:#fff;border:0;padding:6px 10px;border-radius:4px}input[type=text],input[type=number]{padding:6px;border:1px solid #ccc;border-radius:4px}</style>");
-            sb.append("</head><body>");
-            sb.append("<h2>车票管理</h2>");
+            sb.append("<style>body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;margin:0;padding:16px} .container{max-width:1100px;margin:0 auto} h2{margin-top:0} .card{background:#fff;padding:12px;border-radius:8px;box-shadow:0 6px 18px rgba(12,20,40,0.04)} table{border-collapse:collapse;width:100%} th,td{padding:8px;border-bottom:1px solid #eee} th{background:#fbfbfc}</style>");
+            sb.append("</head><body><div class=\"container\"><div class=\"card\"><h2>车票管理</h2>");
             sb.append("<p><a href=\"/\">返回线路管理</a></p>");
-            sb.append("<div style=\"background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.08)\"><h3>发放车票</h3>");
-            sb.append("<form method=\"post\" action=\"/tickets/action\">玩家名: <input name=\"player\" /> 线路ID: <input name=\"lineId\" /> 起点ID: <input name=\"startId\" /> 终点ID: <input name=\"endId\" /> 价格: <input name=\"price\" /> <input type=\"hidden\" name=\"action\" value=\"issue\" /> <input type=\"submit\" value=\"发放\" /></form></div><br/>");
-            sb.append("<div style=\"background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.08)\"><h3>已发放车票</h3>");
+            sb.append("<div style=\"background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.06)\"><h3>发放车票</h3>");
+            sb.append("<form method=\"post\" action=\"/tickets/action\">玩家名: <input name=\"player\" /> 线路ID: <input name=\"lineId\" /> 起点ID: <input name=\"startId\" /> 终点ID: <input name=\"endId\" /> 价格: <input name=\"price\" /> <input type=\"hidden\" name=\"action\" value=\"issue\" /> <input type=\"submit\" value=\"发放\"/></form></div>");
+            sb.append("<div style=\"background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-top:12px\"><h3>已发放车票</h3>");
             sb.append("<table><tr><th>ID</th><th>玩家UUID</th><th>线路</th><th>起点</th><th>终点</th><th>价格</th><th>时间</th><th>状态</th><th>操作</th></tr>");
             List<DBManager.TicketRecord> tickets = plugin.getDbManager().listTickets();
             for (DBManager.TicketRecord t : tickets) {
@@ -221,14 +249,13 @@ public class WebServer {
                 sb.append("<td>").append(state).append("</td>");
                 sb.append("<td>");
                 if (!t.consumed) {
-                    sb.append("<form method=\"post\" action=\"/tickets/action\" style=\"display:inline\"><input type=\"hidden\" name=\"action\" value=\"consume\" /><input type=\"hidden\" name=\"ticketId\" value=\"").append(t.id).append("\" /><input type=\"submit\" value=\"标记已消费\" /></form>");
+                    sb.append("<form method=\"post\" action=\"/tickets/action\" style=\"display:inline\"><input type=\"hidden\" name=\"action\" value=\"consume\" /><input type=\"hidden\" name=\"ticketId\" value=\"").append(t.id).append("\" /><input type=\"submit\" value=\"标记消费\" /></form>");
                 }
-                sb.append("<form method=\"post\" action=\"/tickets/action\" style=\"display:inline;margin-left:6px\"><input type=\"hidden\" name=\"action\" value=\"revoke\" /><input type=\"hidden\" name=\"ticketId\" value=\"").append(t.id).append("\" /><input type=\"submit\" value=\"撤销\" style=\"background:#d9534f\" /></form>");
+                sb.append("<form method=\"post\" action=\"/tickets/action\" style=\"display:inline;margin-left:6px\"><input type=\"hidden\" name=\"action\" value=\"revoke\" /><input type=\"hidden\" name=\"ticketId\" value=\"").append(t.id).append("\" /><input type=\"submit\" value=\"撤销\" /></form>");
                 sb.append("</td>");
                 sb.append("</tr>");
             }
-            sb.append("</table></div>");
-            sb.append("</body></html>");
+            sb.append("</table></div></div></body></html>");
             byte[] resp = sb.toString().getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
             ex.sendResponseHeaders(200, resp.length);
