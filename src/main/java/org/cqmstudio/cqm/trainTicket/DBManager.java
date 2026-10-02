@@ -3,19 +3,23 @@ package org.cqmstudio.cqm.trainTicket;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import java.io.File;
+
+import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-public class DBManager {
+
+public class DBManager {
     private final JavaPlugin plugin;
     private Connection conn;
     private File dbFile;
-    public DBManager(JavaPlugin plugin) {
+
+    public DBManager(JavaPlugin plugin) {
         this.plugin = plugin;
         this.dbFile = new File(plugin.getDataFolder(), "stations.db");
     }
-    public void init() {
+
+    public void init() {
         try {
             if (!plugin.getDataFolder().exists()) plugin.getDataFolder().mkdirs();
             conn = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
@@ -25,13 +29,14 @@ import java.util.List;
                 st.execute("CREATE TABLE IF NOT EXISTS line_prices(line_id INTEGER PRIMARY KEY, price REAL);");
                 st.execute("CREATE TABLE IF NOT EXISTS gates(world TEXT, x INTEGER, y INTEGER, z INTEGER, station_id INTEGER, line_id INTEGER, mode TEXT, PRIMARY KEY(world,x,y,z));");
                 st.execute("CREATE TABLE IF NOT EXISTS machines(world TEXT, x INTEGER, y INTEGER, z INTEGER, type TEXT, PRIMARY KEY(world,x,y,z));");
-                st.execute("CREATE TABLE IF NOT EXISTS tickets(id INTEGER PRIMARY KEY AUTOINCREMENT, player_uuid TEXT, line_id INTEGER, start_id INTEGER, end_id INTEGER, price REAL, issued_at INTEGER, consumed INTEGER DEFAULT 0);");
+                st.execute("CREATE TABLE IF NOT EXISTS tickets(id INTEGER PRIMARY KEY AUTOINCREMENT, player_uuid TEXT, line_id INTEGER, start_id INTEGER, end_id INTEGER, price REAL, issued_at INTEGER, consumed INTEGER);");
             }
         } catch (SQLException e) {
             plugin.getLogger().severe("Failed to open sqlite DB: " + e.getMessage());
         }
     }
-    public synchronized void upsertLines(JSONArray lines) throws SQLException {
+
+    public synchronized void upsertLines(JSONArray lines) throws SQLException {
         String sql = "INSERT OR REPLACE INTO lines(id,name,raw_json) VALUES(?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < lines.length(); i++) {
@@ -44,7 +49,8 @@ import java.util.List;
             ps.executeBatch();
         }
     }
-    public synchronized void upsertStations(JSONArray stations) throws SQLException {
+
+    public synchronized void upsertStations(JSONArray stations) throws SQLException {
         String sql = "INSERT OR REPLACE INTO stations(id,name,line_id,raw_json) VALUES(?,?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < stations.length(); i++) {
@@ -59,8 +65,8 @@ import java.util.List;
         }
     }
 
-    public synchronized java.util.Map<Integer,String> getStationsByLine(int lineId) throws SQLException {
-        java.util.Map<Integer,String> out = new java.util.HashMap<>();
+    public synchronized java.util.Map<Integer, String> getStationsByLine(int lineId) throws SQLException {
+        java.util.Map<Integer, String> out = new java.util.HashMap<>();
         String sql = "SELECT id,name FROM stations WHERE line_id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, lineId);
@@ -94,14 +100,33 @@ import java.util.List;
     }
 
     public static class GateConfig {
-        public final String world; public final int x,y,z; public final int stationId; public final int lineId; public final String mode;
-        public GateConfig(String world,int x,int y,int z,int stationId,int lineId,String mode){this.world=world;this.x=x;this.y=y;this.z=z;this.stationId=stationId;this.lineId=lineId;this.mode=mode;}
+        public final String world;
+        public final int x, y, z;
+        public final int stationId;
+        public final int lineId;
+        public final String mode;
+
+        public GateConfig(String world, int x, int y, int z, int stationId, int lineId, String mode) {
+            this.world = world;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.stationId = stationId;
+            this.lineId = lineId;
+            this.mode = mode;
+        }
     }
 
     public synchronized void setGateConfig(String world, int x, int y, int z, int stationId, int lineId, String mode) throws SQLException {
         String sql = "INSERT OR REPLACE INTO gates(world,x,y,z,station_id,line_id,mode) VALUES(?,?,?,?,?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, world); ps.setInt(2,x); ps.setInt(3,y); ps.setInt(4,z); ps.setInt(5,stationId); ps.setInt(6,lineId); ps.setString(7,mode);
+            ps.setString(1, world);
+            ps.setInt(2, x);
+            ps.setInt(3, y);
+            ps.setInt(4, z);
+            ps.setInt(5, stationId);
+            ps.setInt(6, lineId);
+            ps.setString(7, mode);
             ps.executeUpdate();
         }
     }
@@ -109,17 +134,25 @@ import java.util.List;
     public synchronized GateConfig getGateConfig(String world, int x, int y, int z) throws SQLException {
         String sql = "SELECT station_id,line_id,mode FROM gates WHERE world=? AND x=? AND y=? AND z=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, world); ps.setInt(2,x); ps.setInt(3,y); ps.setInt(4,z);
+            ps.setString(1, world);
+            ps.setInt(2, x);
+            ps.setInt(3, y);
+            ps.setInt(4, z);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return new GateConfig(world,x,y,z,rs.getInt(1), rs.getInt(2), rs.getString(3));
+                if (rs.next()) return new GateConfig(world, x, y, z, rs.getInt(1), rs.getInt(2), rs.getString(3));
             }
         }
         return null;
     }
-    public synchronized void setMachine(String world, int x, int y, int z, String type) throws SQLException {
+
+    public synchronized void setMachine(String world, int x, int y, int z, String type) throws SQLException {
         String sql = "INSERT OR REPLACE INTO machines(world,x,y,z,type) VALUES(?,?,?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, world); ps.setInt(2,x); ps.setInt(3,y); ps.setInt(4,z); ps.setString(5,type);
+            ps.setString(1, world);
+            ps.setInt(2, x);
+            ps.setInt(3, y);
+            ps.setInt(4, z);
+            ps.setString(5, type);
             ps.executeUpdate();
         }
     }
@@ -127,7 +160,10 @@ import java.util.List;
     public synchronized String getMachineType(String world, int x, int y, int z) throws SQLException {
         String sql = "SELECT type FROM machines WHERE world=? AND x=? AND y=? AND z=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, world); ps.setInt(2,x); ps.setInt(3,y); ps.setInt(4,z);
+            ps.setString(1, world);
+            ps.setInt(2, x);
+            ps.setInt(3, y);
+            ps.setInt(4, z);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getString(1);
             }
@@ -143,7 +179,8 @@ import java.util.List;
             ps.executeUpdate();
         }
     }
-    public synchronized double getLinePrice(int lineId) throws SQLException {
+
+    public synchronized double getLinePrice(int lineId) throws SQLException {
         String sql = "SELECT price FROM line_prices WHERE line_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, lineId);
@@ -153,10 +190,23 @@ import java.util.List;
         }
         return 0.0;
     }
-    public synchronized List<String> listLines() throws SQLException {
+
+    public synchronized List<String> listLines() throws SQLException {
         List<String> out = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT id,name FROM lines ORDER BY id")) {
             while (rs.next()) out.add(rs.getInt(1) + ": " + rs.getString(2));
+        }
+        return out;
+    }
+
+    public synchronized java.util.List<java.util.Map.Entry<Integer, String>> listUnassignedStations() throws SQLException {
+        java.util.List<java.util.Map.Entry<Integer, String>> out = new java.util.ArrayList<>();
+        String sql = "SELECT id, name FROM stations WHERE line_id IS NULL OR line_id = 0 ORDER BY id";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.add(new java.util.AbstractMap.SimpleEntry<>(rs.getInt(1), rs.getString(2)));
+            }
         }
         return out;
     }
@@ -171,23 +221,49 @@ import java.util.List;
             }
             return idOpt;
         } else {
-            try (PreparedStatement ps = conn.prepareStatement("INSERT INTO lines(name,raw_json) VALUES(?,?)")) {
+            try (PreparedStatement ps = conn.prepareStatement("INSERT INTO lines(name,raw_json) VALUES(?,?)", Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, name);
                 ps.setString(2, "{}");
                 ps.executeUpdate();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) return rs.getInt(1);
+                }
             }
-            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) { if (rs.next()) return rs.getInt(1); }
+
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) {
+                if (rs.next()) return rs.getInt(1);
+            }
             return -1;
         }
     }
 
     public synchronized void setLinePosition(int lineId, int position) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("UPDATE lines SET position=? WHERE id=?")) { ps.setInt(1, position); ps.setInt(2, lineId); ps.executeUpdate(); }
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE lines SET position=? WHERE id=?")) {
+            ps.setInt(1, position);
+            ps.setInt(2, lineId);
+            ps.executeUpdate();
+        }
     }
-    // tickets management
+
     public static class TicketRecord {
-        public final int id; public final String playerUuid; public final int lineId, startId, endId; public final double price; public final long issuedAt; public final boolean consumed;
-        public TicketRecord(int id,String playerUuid,int lineId,int startId,int endId,double price,long issuedAt,boolean consumed){this.id=id;this.playerUuid=playerUuid;this.lineId=lineId;this.startId=startId;this.endId=endId;this.price=price;this.issuedAt=issuedAt;this.consumed=consumed;}
+        public final int id;
+        public final String playerUuid;
+        public final int lineId, startId, endId;
+        public final double price;
+        public final long issuedAt;
+        public final boolean consumed;
+
+        public TicketRecord(int id, String playerUuid, int lineId, int startId, int endId, double price, long issuedAt, boolean consumed) {
+            this.id = id;
+            this.playerUuid = playerUuid;
+            this.lineId = lineId;
+            this.startId = startId;
+            this.endId = endId;
+            this.price = price;
+            this.issuedAt = issuedAt;
+            this.consumed = consumed;
+        }
     }
 
     public synchronized int insertTicket(String playerUuid, int lineId, int startId, int endId, double price) throws SQLException {
@@ -201,6 +277,7 @@ import java.util.List;
             ps.setLong(6, System.currentTimeMillis());
             ps.executeUpdate();
         }
+
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) {
             if (rs.next()) return rs.getInt(1);
         }
@@ -209,15 +286,27 @@ import java.util.List;
 
     public synchronized List<TicketRecord> listTickets() throws SQLException {
         List<TicketRecord> out = new ArrayList<>();
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT id,player_uuid,line_id,start_id,end_id,price,issued_at,consumed FROM tickets ORDER BY issued_at DESC")) {
-            while (rs.next()) out.add(new TicketRecord(rs.getInt(1), rs.getString(2), rs.getInt(3), rs.getInt(4), rs.getInt(5), rs.getDouble(6), rs.getLong(7), rs.getInt(8) != 0));
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT id,player_uuid,line_id,start_id,end_id,price,issued_at,consumed FROM tickets ORDER BY issued_at DESC")) {
+            while (rs.next()) {
+                out.add(new TicketRecord(
+                        rs.getInt(1),
+                        rs.getString(2),
+                        rs.getInt(3),
+                        rs.getInt(4),
+                        rs.getInt(5),
+                        rs.getDouble(6),
+                        rs.getLong(7),
+                        rs.getInt(8) != 0
+                ));
+            }
         }
         return out;
     }
 
     public synchronized void setTicketConsumed(int ticketId, boolean consumed) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("UPDATE tickets SET consumed=? WHERE id=?")) {
-            ps.setInt(1, consumed?1:0);
+            ps.setInt(1, consumed ? 1 : 0);
             ps.setInt(2, ticketId);
             ps.executeUpdate();
         }
@@ -231,45 +320,79 @@ import java.util.List;
     }
 
     public synchronized void deleteLine(int lineId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM lines WHERE id=?")) { ps.setInt(1,lineId); ps.executeUpdate(); }
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM line_prices WHERE line_id=?")) { ps.setInt(1,lineId); ps.executeUpdate(); }
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM stations WHERE line_id=?")) { ps.setInt(1,lineId); ps.executeUpdate(); }
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM lines WHERE id=?")) {
+            ps.setInt(1, lineId);
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM line_prices WHERE line_id=?")) {
+            ps.setInt(1, lineId);
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM stations WHERE line_id=?")) {
+            ps.setInt(1, lineId);
+            ps.executeUpdate();
+        }
     }
 
     public synchronized void updateLineName(int lineId, String name) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("INSERT OR REPLACE INTO lines(id,name,raw_json) VALUES(?,?,COALESCE((SELECT raw_json FROM lines WHERE id=?),'{}'))")) {
-            ps.setInt(1, lineId); ps.setString(2, name); ps.setInt(3, lineId); ps.executeUpdate();
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT OR REPLACE INTO lines(id,name,raw_json) VALUES(?,?,COALESCE((SELECT raw_json FROM lines WHERE id=?),'{}'))")) {
+            ps.setInt(1, lineId);
+            ps.setString(2, name);
+            ps.setInt(3, lineId);
+            ps.executeUpdate();
         }
     }
 
     public synchronized int insertStation(String name, int lineId, Integer idOpt) throws SQLException {
         if (idOpt != null && idOpt > 0) {
             try (PreparedStatement ps = conn.prepareStatement("INSERT OR REPLACE INTO stations(id,name,line_id,raw_json) VALUES(?,?,?,?)")) {
-                ps.setInt(1, idOpt); ps.setString(2, name); ps.setInt(3, lineId); ps.setString(4, "{}"); ps.executeUpdate();
+                ps.setInt(1, idOpt);
+                ps.setString(2, name);
+                ps.setInt(3, lineId);
+                ps.setString(4, "{}");
+                ps.executeUpdate();
             }
             return idOpt;
         } else {
-            try (PreparedStatement ps = conn.prepareStatement("INSERT INTO stations(name,line_id,raw_json) VALUES(?,?,?)")) {
-                ps.setString(1, name); ps.setInt(2, lineId); ps.setString(3, "{}"); ps.executeUpdate();
+            try (PreparedStatement ps = conn.prepareStatement("INSERT INTO stations(name,line_id,raw_json) VALUES(?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, name);
+                ps.setInt(2, lineId);
+                ps.setString(3, "{}");
+                ps.executeUpdate();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) return rs.getInt(1);
+                }
             }
-            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) { if (rs.next()) return rs.getInt(1); }
+
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) {
+                if (rs.next()) return rs.getInt(1);
+            }
             return -1;
         }
     }
 
     public synchronized void updateStation(int stationId, String name, int lineId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("INSERT OR REPLACE INTO stations(id,name,line_id,raw_json) VALUES(?,?,?,COALESCE((SELECT raw_json FROM stations WHERE id=?),'{}'))")) {
-            ps.setInt(1, stationId); ps.setString(2, name); ps.setInt(3, lineId); ps.setInt(4, stationId); ps.executeUpdate();
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT OR REPLACE INTO stations(id,name,line_id,raw_json) VALUES(?,?,?,COALESCE((SELECT raw_json FROM stations WHERE id=?),'{}'))")) {
+            ps.setInt(1, stationId);
+            ps.setString(2, name);
+            ps.setInt(3, lineId);
+            ps.setInt(4, stationId);
+            ps.executeUpdate();
         }
     }
 
     public synchronized void deleteStation(int stationId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM stations WHERE id=?")) { ps.setInt(1, stationId); ps.executeUpdate(); }
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM stations WHERE id=?")) {
+            ps.setInt(1, stationId);
+            ps.executeUpdate();
+        }
     }
 
-    // helper to list stations by line with IDs and names
-    public synchronized java.util.List<java.util.Map.Entry<Integer,String>> listStationsForLine(int lineId) throws SQLException {
-        java.util.List<java.util.Map.Entry<Integer,String>> out = new java.util.ArrayList<>();
+    public synchronized java.util.List<java.util.Map.Entry<Integer, String>> listStationsForLine(int lineId) throws SQLException {
+        java.util.List<java.util.Map.Entry<Integer, String>> out = new java.util.ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement("SELECT id,name FROM stations WHERE line_id=? ORDER BY id")) {
             ps.setInt(1, lineId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -280,6 +403,9 @@ import java.util.List;
     }
 
     public void close() {
-        try { if (conn != null) conn.close(); } catch (SQLException ignored) {}
+        try {
+            if (conn != null) conn.close();
+        } catch (SQLException ignored) {
+        }
     }
 }
