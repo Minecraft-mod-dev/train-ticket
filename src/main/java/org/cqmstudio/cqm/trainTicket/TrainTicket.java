@@ -12,6 +12,7 @@ public final class TrainTicket extends JavaPlugin {
     private DBManager dbManager;
     private SyncTask syncTask;
     private WebServer webServer;
+    private AutoUpdateManager autoUpdateManager;
 
     @Override
     public void onEnable() {
@@ -37,6 +38,9 @@ public final class TrainTicket extends JavaPlugin {
         syncTask = new SyncTask(this, dbManager);
         syncTask.runTaskTimerAsynchronously(this, 0L, 600L);
 
+        autoUpdateManager = new AutoUpdateManager(this);
+        autoUpdateManager.start();
+
         int webPort = getConfig().getInt("web.port", 2345);
 
         webServer = new WebServer(this);
@@ -47,6 +51,7 @@ public final class TrainTicket extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (autoUpdateManager != null) autoUpdateManager.stop();
         if (syncTask != null) syncTask.cancel();
         if (webServer != null) webServer.stop();
         if (dbManager != null) dbManager.close();
@@ -66,6 +71,13 @@ public final class TrainTicket extends JavaPlugin {
         getConfig().addDefault("sync.stations_url", "");
         getConfig().addDefault("sync.lines_url", "");
         getConfig().addDefault("sync.log", false);
+        getConfig().addDefault("update.auto_enable", false);
+        getConfig().addDefault("update.check_interval_minutes", 60);
+        getConfig().addDefault("update.modrinth_project", "H8DKfMWO");
+        getConfig().addDefault("update.include_beta", false);
+        getConfig().addDefault("update.include_alpha", false);
+        getConfig().addDefault("update.auto_apply", false);
+        getConfig().addDefault("update.target_mc_version", "");
         getConfig().options().copyDefaults(true);
         saveConfig();
     }
