@@ -16,6 +16,13 @@ public final class TrainTicket extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
+
+        // ensure configuration defaults exist (will not overwrite existing values)
+        ensureConfigDefaults();
+
+        // ensure data folder exists early (AutoUpdate and DB expect it)
+        try { getDataFolder().mkdirs(); } catch (Exception ignored) {}
+
         // setup economy (Vault)
         if (!setupEconomy()) {
             getLogger().warning("Vault not found or economy not hooked. Payments will fail.");
@@ -38,12 +45,6 @@ public final class TrainTicket extends JavaPlugin {
         syncTask = new SyncTask(this, dbManager);
         syncTask.runTaskTimerAsynchronously(this, 0L, 600L);
 
-        // ensure config has default web port and sync URLs (defaults)
-        getConfig().addDefault("web.port", 2345);
-        getConfig().addDefault("sync.stations_url", "");
-        getConfig().addDefault("sync.lines_url", "");
-        getConfig().options().copyDefaults(true);
-        saveConfig();
         int webPort = getConfig().getInt("web.port", 2345);
 
         // start web admin panel on configured port
@@ -67,6 +68,20 @@ public final class TrainTicket extends JavaPlugin {
         if (rsp == null) return false;
         econ = rsp.getProvider();
         return econ != null;
+    }
+
+    /**
+     * Ensure configuration file and defaults exist. This will not overwrite existing values.
+     */
+    private void ensureConfigDefaults() {
+        // Set sensible defaults
+        getConfig().addDefault("web.port", 2345);
+        getConfig().addDefault("sync.stations_url", "");
+        getConfig().addDefault("sync.lines_url", "");
+        getConfig().addDefault("sync.log", false);
+        // copy defaults into config.yml only where keys are missing
+        getConfig().options().copyDefaults(true);
+        saveConfig();
     }
 
     public static TrainTicket getInstance() { return instance; }
