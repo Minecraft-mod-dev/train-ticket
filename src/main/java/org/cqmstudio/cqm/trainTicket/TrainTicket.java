@@ -20,6 +20,9 @@ public final class TrainTicket extends JavaPlugin {
         // ensure configuration defaults exist (will not overwrite existing values)
         ensureConfigDefaults();
 
+        // ensure data folder exists early (AutoUpdate and DB expect it)
+        try { getDataFolder().mkdirs(); } catch (Exception ignored) {}
+
         // setup economy (Vault)
         if (!setupEconomy()) {
             getLogger().warning("Vault not found or economy not hooked. Payments will fail.");

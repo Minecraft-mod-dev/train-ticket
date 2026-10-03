@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -99,6 +100,12 @@ public class AutoUpdateManager {
                 return;
             }
 
+            // ensure plugin data folder exists and determine plugins dir
+            try {
+                File data = plugin.getDataFolder();
+                if (!data.exists()) data.mkdirs();
+            } catch (Exception ignored) {}
+
             File pluginsDir = plugin.getDataFolder().getParentFile();
             if (pluginsDir == null || !pluginsDir.exists()) {
                 plugin.getLogger().severe("AutoUpdate: plugins directory not found");
@@ -107,7 +114,9 @@ public class AutoUpdateManager {
 
             String currentJarName = findCurrentJarName();
             if (currentJarName == null) {
-                currentJarName = "train-ticket-" + latest.versionNumber + ".jar";
+                // fall back to a sensible default name based on plugin name and version
+                String safeName = plugin.getDescription().getName().replaceAll("[^A-Za-z0-9._-]", "-").toLowerCase();
+                currentJarName = safeName + "-" + latest.versionNumber + ".jar";
             }
             File targetJar = new File(pluginsDir, currentJarName);
             File backupJar = new File(pluginsDir, currentJarName + ".bak");
@@ -119,17 +128,30 @@ public class AutoUpdateManager {
                 plugin.getLogger().log(Level.WARNING, "AutoUpdate: backup failed: " + ex.getMessage(), ex);
             }
 
-            File tempJar = new File(pluginsDir, currentJarName + ".download");
+            // create a unique temporary file for download to avoid collisions
+            File tempJar = new File(pluginsDir, currentJarName + ".download." + System.nanoTime());
+            try {
+                if (tempJar.exists()) Files.delete(tempJar.toPath());
+            } catch (Exception ignored) {}
+
             if (!downloadFile(jarUrl, tempJar)) {
                 plugin.getLogger().warning("AutoUpdate: download failed");
+                try { Files.deleteIfExists(tempJar.toPath()); } catch (Exception ignored) {}
                 return;
             }
 
             try {
-                Files.move(tempJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                // attempt atomic move, fall back to normal move if not supported
+                try {
+                    Files.move(tempJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                } catch (Exception atomicEx) {
+                    plugin.getLogger().log(Level.WARNING, "AutoUpdate: atomic move failed, fallback to normal move: " + atomicEx.getMessage(), atomicEx);
+                    Files.move(tempJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
             } catch (Exception ex) {
-                plugin.getLogger().log(Level.WARNING, "AutoUpdate: atomic move failed, fallback to normal move: " + ex.getMessage(), ex);
-                Files.move(tempJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                plugin.getLogger().log(Level.WARNING, "AutoUpdate: move to target failed: " + ex.getMessage(), ex);
+                try { Files.deleteIfExists(tempJar.toPath()); } catch (Exception ignored) {}
+                return;
             }
 
             plugin.getLogger().info("AutoUpdate: new jar saved to " + targetJar.getAbsolutePath());
@@ -189,6 +211,10 @@ public class AutoUpdateManager {
 
     private boolean downloadFile(String urlString, File outputFile) {
         try {
+            // ensure parent exists
+            Path parent = outputFile.toPath().getParent();
+            if (parent != null && !Files.exists(parent)) Files.createDirectories(parent);
+
             URL url = new URL(urlString);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(10000);
@@ -308,8 +334,17 @@ public class AutoUpdateManager {
                 }
             }
 
-            String published = obj.optString("date_published", Instant.now().toString());
-            Date date = Date.from(Instant.parse(published));
+            String published = obj.optString("date_published", "");
+            Date date;
+            try {
+                if (published == null || published.isEmpty()) {
+                    date = Date.from(Instant.now());
+                } else {
+                    date = Date.from(Instant.parse(published));
+                }
+            } catch (Exception ex) {
+                date = Date.from(Instant.now());
+            }
 
             return new ModrinthVersion(versionNumber, versionType, gameVersions, files, date);
         }
